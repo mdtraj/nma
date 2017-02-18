@@ -5,7 +5,7 @@ Install
 -------
 
 ```bash
-$ git clone git@github.com:cxhernandez/gnma.git && cd GNMA
+$ git clone git@github.com:cxhernandez/gnma.git && cd gnma
 $ python setup.py Install
 ```
 
