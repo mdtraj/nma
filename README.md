@@ -18,7 +18,7 @@ import mdtraj as md
 from gnma import GNMA
 
 # Load structure of choice (e.g. GFP)
-pdb = mdtraj.load_pdb('https://files.rcsb.org/download/1EMA.pdb.gz')
+pdb = md.load_pdb('https://files.rcsb.org/download/1EMA.pdb.gz')
 
 # Initialize GNMA object
 gnma = GNMA(mode=5, nb_cutoff=1., selection='backbone')
