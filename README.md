@@ -35,4 +35,4 @@ Complaints
 Shout-outs
 ----------
 
-+ (ProDy)[https://github.com/prody/ProDy] (for loose inspiration)
++ [ProDy](https://github.com/prody/ProDy) (for loose inspiration)
