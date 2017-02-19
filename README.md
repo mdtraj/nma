@@ -18,10 +18,10 @@ import mdtraj as md
 from gnma import GNMA
 
 # Load structure of choice (e.g. GFP)
-pdb = md.load_pdb('https://files.rcsb.org/download/1EMA.pdb.gz')
+pdb = md.load_pdb('https://files.rcsb.org/download/1GFL.pdb.gz')
 
 # Initialize GNMA object
-gnma = GNMA(mode=5, nb_cutoff=1., selection='backbone')
+gnma = GNMA(mode=5, nb_cutoff=1., selection='chainid 0 and backbone')
 
 # Transform the PDB into a short trajectory of a given mode
 gnma_traj = gnma.fit_transform(pdb)
