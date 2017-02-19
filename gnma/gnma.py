@@ -26,7 +26,7 @@ class GNMA(object):
        proteins. *Phys. Rev. Lett.* **1997** 79:3090-3093.
     """
 
-    def __init__(self, mode=0, k=5., nb_cutoff=0.5, steps=10, temp=300.,
+    def __init__(self, mode=0, k=1., nb_cutoff=0.5, steps=50, temp=300.,
                  selection='not element H'):
         self.mode = mode
         self.k = k
