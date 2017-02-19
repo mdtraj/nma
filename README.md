@@ -27,6 +27,8 @@ gnma = GNMA(mode=5, nb_cutoff=1., selection='chainid 0 and backbone')
 gnma_traj = gnma.fit_transform(pdb)
 ```
 
+![](https://raw.githubusercontent.com/cxhernandez/gnma/master/examples/gfp.gif)
+
 Complaints
 ----------
 
