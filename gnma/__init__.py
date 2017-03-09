@@ -1,1 +1,0 @@
-from .gnma import GNMA

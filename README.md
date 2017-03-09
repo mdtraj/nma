@@ -15,16 +15,21 @@ Usage
 ```python
 # Imports
 import mdtraj as md
-from gnma import GNMA
+from nma import ANMA
 
 # Load structure of choice (e.g. GFP)
 pdb = md.load_pdb('https://files.rcsb.org/download/1GFL.pdb.gz')
 
+<<<<<<< HEAD
 # Initialize GNMA object
-gnma = GNMA(mode=5, nb_cutoff=1., selection='chainid 0 and backbone')
+anma = ANMA(mode=0, nb_cutoff=1., k=1., n_steps=50, selection='chainid 0 and backbone')
+=======
+# Initialize ANMA object
+anma = ANMA(mode=0, rmsd=0.06, n_steps=50, selection='all')
+>>>>>>> 73c0345... hessian
 
 # Transform the PDB into a short trajectory of a given mode
-gnma_traj = gnma.fit_transform(pdb)
+anma_traj = anma.fit_transform(pdb)
 ```
 
 ![](https://raw.githubusercontent.com/cxhernandez/gnma/master/examples/gfp.gif)
