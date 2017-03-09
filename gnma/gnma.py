@@ -69,9 +69,8 @@ class GNMA(object):
         if isinstance(mode, int):
             mode = [mode]
 
-        grad = np.atleast_2d(self.weighted_eigenvectors_[:, mode].dot(
-            self.frequencies_[mode])).T
-        grad *= np.ones((self.top.n_atoms, 3))
+        grad = (np.atleast_2d(self.weighted_eigenvectors_[:, mode].dot(
+            self.frequencies_[mode])).T * np.ones((self.top.n_atoms, 3)))
 
         for i in range(mid):
             xyz[i + mid + 1] = xyz[i + mid] + grad
