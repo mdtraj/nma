@@ -27,9 +27,9 @@ anma = ANMA(mode=0, rmsd=0.06, n_steps=50, selection='all')
 anma_traj = anma.fit_transform(pdb)
 ```
 
-![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat0.gif)
-![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat1.gif)
-![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat2.gif)
+Mode 0                     |  Mode 1                   |  Mode 2
+:-------------------------:|:-------------------------:|:-------------------------:
+![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat0.gif) | ![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat1.gif) | ![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat2.gif)
 
 Complaints
 ----------
