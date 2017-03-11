@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='gnma',
+    name='nma',
     version='0.1',
     platforms=("Windows", "Linux", "Mac OS-X", "Unix",),
     keywords="molecular dynamics structure analysis",

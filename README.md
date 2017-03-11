@@ -1,12 +1,12 @@
-GNMA
-====
+NMA
+===
 
 Install
 -------
 
 ```bash
-$ git clone git@github.com:cxhernandez/gnma.git && cd gnma
-$ python setup.py Install
+$ git clone git@github.com:cxhernandez/nma.git && cd nma
+$ python setup.py install
 ```
 
 Usage
@@ -15,24 +15,26 @@ Usage
 ```python
 # Imports
 import mdtraj as md
-from gnma import GNMA
+from nma import ANMA
 
-# Load structure of choice (e.g. GFP)
-pdb = md.load_pdb('https://files.rcsb.org/download/1GFL.pdb.gz')
+# Load structure of choice (e.g. Water)
+pdb = md.load_pdb('./examples/water.pdb')
 
-# Initialize GNMA object
-gnma = GNMA(mode=5, nb_cutoff=1., selection='chainid 0 and backbone')
+# Initialize ANMA object
+anma = ANMA(mode=0, rmsd=0.06, n_steps=50, selection='all')
 
 # Transform the PDB into a short trajectory of a given mode
-gnma_traj = gnma.fit_transform(pdb)
+anma_traj = anma.fit_transform(pdb)
 ```
 
-![](https://raw.githubusercontent.com/cxhernandez/gnma/master/examples/gfp.gif)
+![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat0.gif)
+![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat1.gif)
+![](https://raw.githubusercontent.com/cxhernandez/nma/master/examples/wat2.gif)
 
 Complaints
 ----------
 
-[Post to the issue tracker.](https://github.com/cxhernandez/gnma/issues)
+[Post to the issue tracker.](https://github.com/cxhernandez/nma/issues)
 
 Shout-outs
 ----------
