@@ -90,6 +90,18 @@ class ANMA(object):
         self.vars_ = 1 / self.eigenvalues_
         self.trace_ = self.vars_.sum()
 
+    def _grad(self, mode):
+        mid = int(self.n_steps / 2.)
+        xyz = np.zeros((self.n_steps + 1, self._top.n_atoms, 3))
+        xyz[mid] = self._xyz[0]
+
+        step = self.rmsd / self.n_steps
+        scale = step * self._top.n_atoms ** 0.5
+        arr = self.eigenvectors_[:, mode].reshape((self._top.n_atoms, 3))
+        grad = (arr * scale) / np.sqrt((arr**2).sum())
+
+        return grad
+
     def _animate(self, mode):
         mid = int(self.n_steps / 2.)
         xyz = np.zeros((self.n_steps + 1, self._top.n_atoms, 3))
