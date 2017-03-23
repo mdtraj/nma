@@ -27,6 +27,10 @@ class ANMA(object):
         Number of frames to animate.
     rmsd=0.15 : float, default=0.15
         RMSD tolerance for animation in nanometers.
+    rigid : bool, default=False
+        Treat non-selected atoms as rigid-bodies, which move along with the
+        nearest bonded atom that has been selected. Setting this parameter to
+        False will strip out non-selected atoms.
     selection : str, default='not element H'
         Atom selection used to compute network model.
     turbo : bool, default=True
@@ -73,6 +77,7 @@ class ANMA(object):
         self._dirty = True
 
     def _define_interactions(self):
+        """Build a list of bonded and non-bonded interactions"""
         self.bonded = {(i.index, j.index) for i, j in self._top.bonds
                        if i.index in self._ind and j.index in self._ind}
         combos = combinations_with_replacement(self._ind, 2)
@@ -80,6 +85,7 @@ class ANMA(object):
         self.non_bonded -= self.bonded
 
     def _solve(self):
+        """Solve the eigenvalue problem for the Hessian"""
         vals, vecs = linalg.eigh(self.hessian_, turbo=self.turbo,
                                  eigvals=(0, 6 + self.mode))
 
@@ -91,18 +97,28 @@ class ANMA(object):
         self.trace_ = self.vars_.sum()
 
     def _rigid_mode(self, mode):
+        """Compute an eigenmode for the system given a rigid-body constraint"""
+        # Fill mode with available values from the selected eigenvector of
+        # the Hessian
         arr = np.zeros((self._top.n_atoms, 3))
         arr[self._ind, :] = np.reshape(self.eigenvectors_[:, mode],
                                        (self.n_atoms_, 3))
 
+        # Initialize graph of bonded atoms
         G = nx.Graph([(i.index, j.index) for i, j in self._top.bonds])
+
+        # For each non-selected atom search the graph for the nearest bonded
+        # atom that has been selected and have the query atom inherit its
+        # gradient
         for i in (set(range(self._top.n_atoms)) - set(self._ind)):
             path_lengths = nx.single_source_shortest_path_length(G, i)
             d = np.array(list(path_lengths.values()))[self._ind]
             arr[i, :] = arr[np.argmin(d), :]
+
         return arr
 
     def _grad(self, mode):
+        """Compute the gradient of a normal mode for the system"""
         step = self.rmsd / self.n_steps
         scale = step * self._top.n_atoms ** 0.5
 
@@ -116,6 +132,7 @@ class ANMA(object):
         return grad
 
     def _animate(self, mode):
+        """Animate a normal mode as an mdtraj.Trajectory"""
         mid = int(self.n_steps / 2.)
         xyz = np.zeros((self.n_steps + 1, self._top.n_atoms, 3))
         xyz[mid] = self._xyz[0]
@@ -129,6 +146,7 @@ class ANMA(object):
         return md.Trajectory(xyz[:-1], self._top)
 
     def _set_hessian(self, m, n, g):
+        """Set the value of the Hessian for a given pair of atoms (m, n)"""
         i, j = self._ind.index(m), self._ind.index(n)
         if not self.rigid:
             i2j = self._xyz[0, i, :] - self._xyz[0, j, :]
