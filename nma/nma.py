@@ -71,8 +71,9 @@ class ANMA(object):
         self._dirty = True
 
     def _define_interactions(self):
-        self.bonded = {(i.index, j.index) for i, j in self._top.bonds}
-        combos = combinations_with_replacement(range(self._top.n_atoms), 2)
+        self.bonded = {(i.index, j.index) for i, j in self._top.bonds
+                       if i.index in self._ind and j.index in self._ind}
+        combos = combinations_with_replacement(self._ind, 2)
         self.non_bonded = {(i, j) for i, j in combos if i != j}
         self.non_bonded -= self.bonded
 
@@ -88,10 +89,6 @@ class ANMA(object):
         self.trace_ = self.vars_.sum()
 
     def _grad(self, mode):
-        mid = int(self.n_steps / 2.)
-        xyz = np.zeros((self.n_steps + 1, self._top.n_atoms, 3))
-        xyz[mid] = self._xyz[0]
-
         step = self.rmsd / self.n_steps
         scale = step * self._top.n_atoms ** 0.5
         arr = self.eigenvectors_[:, mode].reshape((self._top.n_atoms, 3))
@@ -104,10 +101,7 @@ class ANMA(object):
         xyz = np.zeros((self.n_steps + 1, self._top.n_atoms, 3))
         xyz[mid] = self._xyz[0]
 
-        step = self.rmsd / self.n_steps
-        scale = step * self._top.n_atoms ** 0.5
-        arr = self.eigenvectors_[:, mode].reshape((self._top.n_atoms, 3))
-        grad = (arr * scale) / np.sqrt((arr**2).sum())
+        grad = self._grad(mode)
 
         for i in range(mid):
             xyz[i + mid + 1] = xyz[i + mid] + grad
@@ -115,8 +109,12 @@ class ANMA(object):
 
         return md.Trajectory(xyz[:-1], self._top)
 
-    def _set_hessian(self, i, j, g):
-        i2j = self._xyz[0, i, :] - self._xyz[0, j, :]
+    def _set_hessian(self, m, n, g):
+        i, j = self._ind.index(m), self._ind.index(n)
+        if not self.rigid:
+            i2j = self._xyz[0, i, :] - self._xyz[0, j, :]
+        else:
+            i2j = self._xyz[0, m, :] - self._xyz[0, n, :]
         dist2 = np.dot(i2j, i2j)
         super_el = np.outer(i2j, i2j) * (g / dist2)
         res_i3 = i * 3
@@ -143,8 +141,11 @@ class ANMA(object):
         self : object
             Returns the instance itself.
         """
-        self._ind = X.top.select(self.selection)
-        self._structure = X[0].atom_slice(self._ind)
+        self._ind = list(X.top.select(self.selection))
+        self.n_atoms_ = len(self._ind)
+        self._structure = X[0]
+        if not self.rigid:
+            self._structure = X[0].atom_slice(self._ind)
         self._top = self._structure.top
         self._xyz = self._structure.xyz
 
@@ -152,17 +153,16 @@ class ANMA(object):
         self._define_interactions()
 
         # Initialize Hessian Matrix
-        self.hessian_ = np.zeros((3 * self._top.n_atoms,
-                                  3 * self._top.n_atoms))
+        self.hessian_ = np.zeros((3 * self.n_atoms_,
+                                  3 * self.n_atoms_))
 
         # Get Distances
-        self.distances_ = md.compute_distances(self._structure,
-                                               atom_pairs=self.non_bonded
+        self.distances_ = md.compute_distances(X[0], atom_pairs=self.non_bonded
                                                ).ravel()
 
         # Add Non-Bonded Interactions to Matrix
         for k in np.where(self.distances_ < self.nb_cutoff)[0]:
-            i, j = self.non_bonded[k]
+            i, j = list(self.non_bonded)[k]
             g = - self.k_nb
             self._set_hessian(i, j, g)
 
