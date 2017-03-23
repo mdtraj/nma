@@ -1,13 +1,10 @@
 from itertools import combinations_with_replacement
 
 from scipy import linalg
-from scipy.constants import Boltzmann, Avogadro
 
 import numpy as np
 
 import mdtraj as md
-
-kb = 10**-3 * Boltzmann * Avogadro
 
 __all__ = ['ANMA']
 
@@ -60,8 +57,9 @@ class ANMA(object):
        Bahar I. Anisotropy of fluctuation dynamics of proteins with an
        elastic network model. *Biophys. J.* **2001** 80:505-515.
     """
-    def __init__(self, k_b=1., k_nb=1., mode=0, nb_cutoff=0.5, n_steps=10,
-                 rmsd=0.15, selection='not element H', turbo=True):
+    def __init__(self, k_b=1., k_nb=1., mode=0, nb_cutoff=0.5,
+                 n_steps=10, rmsd=0.15, selection='not element H',
+                 rigid=False, turbo=True):
         self.mode = mode
         self.k_b = k_b
         self.k_nb = k_nb
@@ -69,15 +67,15 @@ class ANMA(object):
         self.n_steps = n_steps
         self.rmsd = rmsd
         self.selection = selection
+        self.rigid = rigid
         self.turbo = turbo
         self._dirty = True
 
     def _define_interactions(self):
-        self.bonded = [(i.index, j.index) for i, j in self._top.bonds]
-        self.bonded += [(j.index, i.index) for i, j in self._top.bonds]
-        combos = combinations_with_replacement(self._top.atoms, 2)
-        self.non_bonded = [(i.index, j.index) for i, j in combos
-                           if i != j and (i.index, j.index) not in self.bonded]
+        self.bonded = {(i.index, j.index) for i, j in self._top.bonds}
+        combos = combinations_with_replacement(range(self._top.n_atoms), 2)
+        self.non_bonded = {(i, j) for i, j in combos if i != j}
+        self.non_bonded -= self.bonded
 
     def _solve(self):
         vals, vecs = linalg.eigh(self.hessian_, turbo=self.turbo,
