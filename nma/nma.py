@@ -3,6 +3,8 @@ from itertools import combinations_with_replacement
 from scipy import linalg
 import numpy as np
 
+import networkx as nx
+
 import mdtraj as md
 
 __all__ = ['ANMA']
@@ -88,10 +90,27 @@ class ANMA(object):
         self.vars_ = 1 / self.eigenvalues_
         self.trace_ = self.vars_.sum()
 
+    def _rigid_mode(self, mode):
+        arr = np.zeros((self._top.n_atoms, 3))
+        arr[self._ind, :] = np.reshape(self.eigenvectors_[:, mode],
+                                       (self.n_atoms_, 3))
+
+        G = nx.Graph([(i.index, j.index) for i, j in self._top.bonds])
+        for i in (set(range(self._top.n_atoms)) - set(self._ind)):
+            path_lengths = nx.single_source_shortest_path_length(G, i)
+            d = np.array(list(path_lengths.values()))[self._ind]
+            arr[i, :] = arr[np.argmin(d), :]
+        return arr
+
     def _grad(self, mode):
         step = self.rmsd / self.n_steps
         scale = step * self._top.n_atoms ** 0.5
-        arr = self.eigenvectors_[:, mode].reshape((self._top.n_atoms, 3))
+
+        if self.rigid:
+            arr = self._rigid_mode(mode)
+        else:
+            arr = self.eigenvectors_[:, mode].reshape((self.n_atoms_, 3))
+
         grad = (arr * scale) / np.sqrt((arr**2).sum())
 
         return grad
