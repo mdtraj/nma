@@ -1,7 +1,6 @@
 from itertools import combinations_with_replacement
 
 from scipy import linalg
-
 import numpy as np
 
 import mdtraj as md
@@ -116,9 +115,6 @@ class ANMA(object):
 
         return md.Trajectory(xyz[:-1], self._top)
 
-    def _nb_force(self, x):
-        return 1E-6 / (x - self.nb_cutoff).clip(1E-3, np.inf) ** 2.
-
     def _set_hessian(self, i, j, g):
         i2j = self._xyz[0, i, :] - self._xyz[0, j, :]
         dist2 = np.dot(i2j, i2j)
@@ -159,7 +155,7 @@ class ANMA(object):
         self.hessian_ = np.zeros((3 * self._top.n_atoms,
                                   3 * self._top.n_atoms))
 
-        # Get Distances and Calculate Forces
+        # Get Distances
         self.distances_ = md.compute_distances(self._structure,
                                                atom_pairs=self.non_bonded
                                                ).ravel()
