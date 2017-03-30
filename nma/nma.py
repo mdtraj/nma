@@ -10,6 +10,13 @@ import mdtraj as md
 __all__ = ['ANMA']
 
 
+def distance_cutoff(structure, non_bonded, nb_cutoff=0.5):
+    non_bonded = list(non_bonded)
+    distances = md.compute_distances(structure, atom_pairs=non_bonded).ravel()
+    filtered =  np.where(distances < nb_cutoff)[0]
+    return {non_bonded[i] for i in filtered}
+
+
 class ANMA(object):
     """Class for Anisotropic Network Model (ANM) analysis of proteins
 
@@ -21,21 +28,23 @@ class ANMA(object):
         Non-bonded spring constant.
     mode : int, default=0
         Which mode to animate.
-    nb_cutoff : float, default=0.5
-        Cutoff for non-bonded interactions in nanometers.
+    nb_func : func, default=None
+        Function to define a non-bonded interaction which accepts arguments
+        structure (mdtraj.Trajectory) and a set of non-bonded contacts.
+        If `None`, defaults to a distance cutoff provided by the argument
+        `nb_cutoff` (default=0.5) in nanometers.
     n_steps : int, default=50
         Number of frames to animate.
     rmsd=0.15 : float, default=0.15
         RMSD tolerance for animation in nanometers.
-    rigid : bool, default=False
-        Treat non-selected atoms as rigid-bodies, which move along with the
-        nearest bonded atom that has been selected. Setting this parameter to
-        False will strip out non-selected atoms.
     selection : str, default='not element H'
-        Atom selection used to compute network model.
+        Atom selection used to compute network model. Non-selected atoms will
+        act as rigid bodies.
     turbo : bool, default=True
         Use divide and conquer algorithm for generalized eigenvalue problem
         (faster but expensive in memory).
+    **nb_kwargs
+        Keyword arguments to pass on to `nb_func`.
 
     Attributes
     ----------
@@ -62,27 +71,41 @@ class ANMA(object):
        Bahar I. Anisotropy of fluctuation dynamics of proteins with an
        elastic network model. *Biophys. J.* **2001** 80:505-515.
     """
-    def __init__(self, k_b=1., k_nb=1., mode=0, nb_cutoff=0.5,
-                 n_steps=10, rmsd=0.15, selection='not element H',
-                 rigid=False, turbo=True):
+    def __init__(self, k_b=1., k_nb=1., mode=0, n_steps=10, rmsd=0.15,
+                 nb_func=None, selection='not element H',
+                 turbo=True, **nb_kwargs):
         self.mode = mode
         self.k_b = k_b
         self.k_nb = k_nb
-        self.nb_cutoff = nb_cutoff
         self.n_steps = n_steps
         self.rmsd = rmsd
         self.selection = selection
-        self.rigid = rigid
         self.turbo = turbo
         self._dirty = True
+        self._bonded = None
+        self._non_bonded = None
+        self.nb_kwargs = nb_kwargs
+        self.nb_func = nb_func
+        if not self.nb_func:
+            self.nb_func = distance_cutoff
 
-    def _define_interactions(self):
-        """Build a list of bonded and non-bonded interactions"""
-        self.bonded = {(i.index, j.index) for i, j in self._top.bonds
-                       if i.index in self._ind and j.index in self._ind}
-        combos = combinations_with_replacement(self._ind, 2)
-        self.non_bonded = {(i, j) for i, j in combos if i != j}
-        self.non_bonded -= self.bonded
+    @property
+    def bonded(self):
+        if not self._bonded:
+            self._bonded = {(i.index, j.index) for i, j in self._top.bonds
+                            if i.index in self._ind and j.index in self._ind}
+
+        return self._bonded
+
+    @property
+    def non_bonded(self):
+        if not self._non_bonded:
+            combos = combinations_with_replacement(self._ind, 2)
+            self._non_bonded = {(i, j) for i, j in combos if i != j}
+            self._non_bonded -= self.bonded
+            self._non_bonded = self.nb_func(self._structure, self._non_bonded,
+                                            **self.nb_kwargs)
+        return self._non_bonded
 
     def _solve(self):
         """Solve the eigenvalue problem for the Hessian"""
@@ -122,11 +145,7 @@ class ANMA(object):
         step = self.rmsd / self.n_steps
         scale = step * self._top.n_atoms ** 0.5
 
-        if self.rigid:
-            arr = self._rigid_mode(mode)
-        else:
-            arr = self.eigenvectors_[:, mode].reshape((self.n_atoms_, 3))
-
+        arr = self._rigid_mode(mode)
         grad = (arr * scale) / np.sqrt((arr**2).sum())
 
         return grad
@@ -148,10 +167,7 @@ class ANMA(object):
     def _set_hessian(self, m, n, g):
         """Set the value of the Hessian for a given pair of atoms (m, n)"""
         i, j = self._ind.index(m), self._ind.index(n)
-        if not self.rigid:
-            i2j = self._xyz[0, i, :] - self._xyz[0, j, :]
-        else:
-            i2j = self._xyz[0, m, :] - self._xyz[0, n, :]
+        i2j = self._xyz[0, m, :] - self._xyz[0, n, :]
         dist2 = np.dot(i2j, i2j)
         super_el = np.outer(i2j, i2j) * (g / dist2)
         res_i3 = i * 3
@@ -181,25 +197,15 @@ class ANMA(object):
         self._ind = list(X.top.select(self.selection))
         self.n_atoms_ = len(self._ind)
         self._structure = X[0]
-        if not self.rigid:
-            self._structure = X[0].atom_slice(self._ind)
         self._top = self._structure.top
         self._xyz = self._structure.xyz
-
-        # Define Non-Bonded and Bonded Interactions
-        self._define_interactions()
 
         # Initialize Hessian Matrix
         self.hessian_ = np.zeros((3 * self.n_atoms_,
                                   3 * self.n_atoms_))
 
-        # Get Distances
-        self.distances_ = md.compute_distances(X[0], atom_pairs=self.non_bonded
-                                               ).ravel()
-
         # Add Non-Bonded Interactions to Matrix
-        for k in np.where(self.distances_ < self.nb_cutoff)[0]:
-            i, j = list(self.non_bonded)[k]
+        for i, j in self.non_bonded:
             g = - self.k_nb
             self._set_hessian(i, j, g)
 
