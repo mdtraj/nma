@@ -1,3 +1,7 @@
+import numpy as np
+
+__all__ = ["hydrophobic"]
+
 # Connect all pairs of non-bonded atoms from hydrophobic residues with springs 
 def hydrophobic(structure, non_bonded):
   output = []
